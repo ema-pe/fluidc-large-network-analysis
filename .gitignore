@@ -1,0 +1,4 @@
+*.gz
+.env
+__pycache__
+output_log
