@@ -22,14 +22,27 @@ def get_unique_communities(community_path):
     communities = set()
     with gzip.open(community_path, "rt") as file:
         for line in file:
-            # Each line is a list of node IDs separated by space.
-            node_ids = line.strip().split()
+            # Each line is a list of node IDs separated by space. Force integer
+            # type since the node IDs are integers.
+            node_ids = [int(x) for x in line.strip().split()]
 
             # The ground-truth file may contain duplicated communities. We also
             # need to convert lists to tuples to have a hashable type for the set.
             communities.add(tuple(sorted(node_ids)))
 
     return communities
+
+
+def load(graph_name):
+    """Returns the ground truth communities for the given graph name."""
+    try:
+        ground_truth_path = Path(f"dataset/{graph_name}.all.cmty.txt.gz")
+        ground_truth_comm = get_unique_communities(ground_truth_path)
+    except FileNotFoundError as e:
+        ground_truth_path = Path(f"dataset/{graph_name}.all.dedup.cmty.txt.gz")
+        ground_truth_comm = get_unique_communities(ground_truth_path)
+
+    return ground_truth_comm
 
 
 if __name__ == "__main__":
