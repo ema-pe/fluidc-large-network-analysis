@@ -4,13 +4,17 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics.cluster import normalized_mutual_info_score
+from tqdm import tqdm
 
 import ground_truth
 
 
 def load_results_data(graph_name, only_metadata=False):
+    communities = dict()
+
+    results = list(Path("results/").glob(f"{graph_name}.fluidc.*.txt.gz"))
     name, seed, max_iter, time = [], [], [], []
-    for result in Path("results/").glob(f"{graph_name}.fluidc.*.txt.gz"):
+    for result in tqdm(results, desc="Loading results data"):
         # I need to extract data directly form the path's name, as example:
         # "com-amazon.fluidc.513226.200.74.txt.gz"
         info = result.name.split(".")[2:5]
@@ -19,6 +23,9 @@ def load_results_data(graph_name, only_metadata=False):
         seed.append(info[0])
         max_iter.append(info[1])
         time.append(info[2])
+
+        if not only_metadata:
+            communities[result.name] = ground_truth.get_unique_communities(result)
 
     data = pd.DataFrame(
         {
@@ -31,12 +38,8 @@ def load_results_data(graph_name, only_metadata=False):
 
     if only_metadata:
         return data
-
-    communities = dict()
-    for result in Path("results/").glob(f"{graph_name}.fluidc.*.txt.gz"):
-        communities[result.name] = ground_truth.get_unique_communities(result)
-
-    return data, communities
+    else:
+        return data, communities
 
 
 def calc_nmi(graph_name):
@@ -81,13 +84,19 @@ def calc_nmi(graph_name):
         ground_labels = clusters_to_labels(list(ground), all_vertices)
         result_labels = clusters_to_labels(list(result_comm), all_vertices)
 
+        progress.update(1)
+
         return normalized_mutual_info_score(ground_labels, result_labels)
 
     ground = ground_truth.load(graph_name)
     data, communities = load_results_data(graph_name)
 
+    progress = tqdm(total=len(communities), desc="Calculating NMI")
+
     # Add the NMI column to the original DataFrame.
     data["nmi"] = data.apply(calc_nmi_row, axis=1)
+
+    progress.close()
 
     return data
 
@@ -128,7 +137,9 @@ def nmi_plot(graph_name):
     ax.set_xticks(stats["max_iter"])
     ax.xaxis.set_major_formatter(plt.ScalarFormatter())
 
-    plt.savefig(f"plots/{graph_name}_nmi.pdf")
+    plot_name = f"plots/{graph_name}_nmi.pdf"
+    plt.savefig(plot_name)
+    print(f"Saved {plot_name!r}")
     plt.close()
 
 
@@ -163,7 +174,9 @@ def time_plot(graph_name):
     ax.set_xticks(stats["max_iter"])
     ax.xaxis.set_major_formatter(plt.ScalarFormatter())
 
-    plt.savefig(f"plots/{graph_name}_time-plot.pdf")
+    plot_name = f"plots/{graph_name}_time-plot.pdf"
+    plt.savefig(plot_name)
+    print(f"Saved {plot_name!r}")
     plt.close()
 
 
