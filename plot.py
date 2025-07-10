@@ -2,9 +2,14 @@ from pathlib import Path
 import argparse
 import functools
 
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics.cluster import normalized_mutual_info_score, adjusted_rand_score
+from sklearn.metrics.cluster import (
+    normalized_mutual_info_score,
+    adjusted_rand_score,
+    contingency_matrix,
+)
 from tqdm import tqdm
 
 import ground_truth
@@ -52,49 +57,88 @@ def clusters_to_labels(clusters, all_vertices):
     return [label_map.get(v, -1) for v in all_vertices]
 
 
-def calc_metric(fluidc_comm, ground_truth_comm, metric="nmi"):
-    metrics = ("nmi", "ari", "purity")
-    if metric not in metrics:
-        raise ValueError(f"Found {metric!r}, expected one of {metrics}")
-
+def calc_metrics(fluidc_comm, ground_truth_comm):
     data = []
-    for result in tqdm(fluidc_comm, desc=f"Calculating {metric.upper()}"):
+    for result in tqdm(fluidc_comm, desc=f"Calculating metrics"):
         comm = fluidc_comm[result]
 
         # Gather all vertices present in both clustering. I need tuple to be an
         # hashable object.
         all_vertices = tuple(sorted(set().union(*ground_truth_comm, *comm)))
 
-        # NMI requires a list of labels: each index matches a vertex of the
-        # graph, whereas each value matches the corresponding found community.
+        # NMI, ARI and Cluster Purity score require a list of labels: each index
+        # matches a vertex of the graph, whereas each value matches the
+        # corresponding found community.
         ground_labels = clusters_to_labels(ground_truth_comm, all_vertices)
         result_labels = clusters_to_labels(comm, all_vertices)
 
-        if metric == "nmi":
-            score = normalized_mutual_info_score(ground_labels, result_labels)
-        else:
-            score = adjusted_rand_score(ground_labels, result_labels)
+        nmi = normalized_mutual_info_score(ground_labels, result_labels)
+        ari = adjusted_rand_score(ground_labels, result_labels)
 
-        data.append((result, score))
+        # The purity score is computed by:
+        #
+        #   1. For each predicted cluster, finding the most common true label
+        #   (the "majority class") among the points assigned to that cluster.
+        #   2. Counting how many points in each cluster belong to their
+        #   cluster's majority class.
+        #   3. Summing these counts for all clusters and dividing by the total
+        #   number of data points.
+        #
+        # I can build the contingency matrix for the first two points.
+        matrix = contingency_matrix(ground_labels, result_labels)
+        # Use np.amax to get the largest value in each column (max for each
+        # predicted cluster).
+        purity = np.sum(np.amax(matrix, axis=0)) / np.sum(matrix)
 
-    return pd.DataFrame(data, columns=["name", metric])
+        data.append((result, nmi, ari, purity))
+
+    df = pd.DataFrame(data, columns=["name", "nmi", "ari", "purity"])
+
+    return df
 
 
 def plot_metric(
-    fluidc_metadata, fluidc_comm, ground_truth_comm, graph_name, metric="nmi"
+    fluidc_metadata,
+    fluidc_comm,
+    ground_truth_comm,
+    graph_name,
+    metric="nmi",
+    use_cache=True,
 ):
     metrics = ("nmi", "ari", "purity")
     if metric not in metrics:
         raise ValueError(f"Found {metric!r}, expected one of {metrics}")
 
-    # Calculate metric for all results.
-    fluidc_nmi = calc_metric(fluidc_comm, ground_truth_comm, metric=metric)
+    # If possibile, load the metrics from cached data on disk, to speed up the
+    # script on subsequent invocations.
+    cache_file = Path(f"results/{graph_name}_metrics.csv")
+    fluidc_metrics = None
+    if use_cache:
+        try:
+            fluidc_metrics = pd.read_csv(cache_file)
+        except:
+            print(
+                f"Failed to read {cache_file.as_posix()!r}, recalculating metrics for {graph_name!r}"
+            )
+
+    if fluidc_metrics is None:
+        # Calculate metric for all results.
+        fluidc_metrics = calc_metrics(fluidc_comm, ground_truth_comm)
+
+    import pdb
+
+    pdb.set_trace()
+
+    # Always save the DataFrame to disk, to later reuse as cache.
+    fluidc_metrics.to_csv(cache_file)
+    print(f"Saved {cache_file.as_posix()!r}")
 
     # Update the first DataFrame with metric score.
-    fluidc_metadata = pd.merge(fluidc_metadata, fluidc_nmi, on="name")
+    fluidc_metadata = pd.merge(fluidc_metadata, fluidc_metrics, on="name")
 
     # Exclude the unused columns for metric plot.
-    data = fluidc_metadata.drop(["name", "time"], axis=1)
+    excluded_metrics = [x for x in metrics if x != metric]
+    data = fluidc_metadata.drop(["name", "time", *excluded_metrics], axis=1)
 
     # Sort by seed and max_iter.
     data = data.sort_values(by=["seed", "max_iter"])
@@ -163,21 +207,47 @@ def time_plot(fluidc_metadata, graph_name):
     plt.close()
 
 
-def main(graph_name):
+def main(graph_name, use_cache):
     ground = ground_truth.load(graph_name)
     fluidc_metadata, fluidc_comm = load_results_data(graph_name)
 
     time_plot(fluidc_metadata, graph_name)
 
-    plot_metric(fluidc_metadata, fluidc_comm, ground, graph_name, metric="nmi")
-
-    plot_metric(fluidc_metadata, fluidc_comm, ground, graph_name, metric="ari")
+    plot_metric(
+        fluidc_metadata,
+        fluidc_comm,
+        ground,
+        graph_name,
+        metric="nmi",
+        use_cache=use_cache,
+    )
+    plot_metric(
+        fluidc_metadata,
+        fluidc_comm,
+        ground,
+        graph_name,
+        metric="ari",
+        use_cache=use_cache,
+    )
+    plot_metric(
+        fluidc_metadata,
+        fluidc_comm,
+        ground,
+        graph_name,
+        metric="purity",
+        use_cache=use_cache,
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--graph-name", help="Graph name", required=True)
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Ignore cached metrics calculation and recalculate metrics",
+    )
 
     args = parser.parse_args()
 
-    main(args.graph_name)
+    main(args.graph_name, not args.no_cache)
