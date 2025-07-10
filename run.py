@@ -5,9 +5,8 @@ import multiprocessing
 
 # (graph_path, ground_truth)
 networks = [
-    ("dataset/com-amazon.ungraph.txt.gz", "75149"),
-    ("dataset/com-dblp.ungraph.txt.gz", "13423"),
-    ("dataset/com-lj.ungraph.txt.gz", "576120"),
+#    ("dataset/com-amazon.ungraph.txt.gz", "75149"),
+#    ("dataset/com-dblp.ungraph.txt.gz", "13423"),
     ("dataset/com-youtube.ungraph.txt.gz", "14870"),
 ]
 

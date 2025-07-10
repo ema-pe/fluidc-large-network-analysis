@@ -10,8 +10,9 @@ URLS=(
 
     # LiveJournal social network and ground-truth communities
     # Source: https://snap.stanford.edu/data/com-LiveJournal.html
-    "https://snap.stanford.edu/data/bigdata/communities/com-lj.ungraph.txt.gz"
-    "https://snap.stanford.edu/data/bigdata/communities/com-lj.all.cmty.txt.gz"
+    # WARNING: It can fit into RAM, but it's too slow.
+    #"https://snap.stanford.edu/data/bigdata/communities/com-lj.ungraph.txt.gz"
+    #"https://snap.stanford.edu/data/bigdata/communities/com-lj.all.cmty.txt.gz"
 
     # Friendster social network and ground-truth communities
     # Source: https://snap.stanford.edu/data/com-Friendster.html
