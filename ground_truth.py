@@ -30,7 +30,7 @@ def get_unique_communities(community_path):
             # need to convert lists to tuples to have a hashable type for the set.
             communities.add(tuple(sorted(node_ids)))
 
-    return communities
+    return frozenset(communities)
 
 
 def load(graph_name):
