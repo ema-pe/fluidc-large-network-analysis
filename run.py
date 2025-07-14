@@ -26,23 +26,10 @@ seeds = [
     201469,
     94177,
     526478,
-    975622,
-    735752,
-    761139,
-    717477,
-    786064,
-    513226,
-    128113,
-    839748,
-    450385,
-    500351,
 ]
 
-# FluidC max iterations parameters. #max_iters = [10, 50, 100, 200, 500, 1000]
-
-
-seeds = [63, 53, 42]
-max_iters = [2, 5, 7, 10, 15]
+# FluidC max iterations parameters.
+max_iters = [2, 5, 7, 10, 15]  # For com-amazon graph.
 
 
 # Create all possibile experiments with networks, seeds and max_iter arguments.
@@ -56,7 +43,7 @@ all_args = [
 for i in tqdm(range(len(all_args))):
     graph, truth, seed, max_iter = all_args[i]
 
-    results_dir = Path("results_tmp")
+    results_dir = Path("results_v2")
 
     print(
         f"Running experiment: graph={graph}, truth={truth}, seed={seed}, max_iter={max_iter}"

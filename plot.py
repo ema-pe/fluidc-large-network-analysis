@@ -97,44 +97,14 @@ def calc_metrics(fluidc_comm, ground_truth_comm):
     return df
 
 
-def plot_metric(
-    fluidc_metadata,
-    fluidc_comm,
-    ground_truth_comm,
-    graph_name,
-    metric="nmi",
-    use_cache=True,
-):
+def plot_metric(fluidc_metrics, graph_name, metric="nmi", output_dir=Path("results")):
     metrics = ("nmi", "ari", "purity")
     if metric not in metrics:
         raise ValueError(f"Found {metric!r}, expected one of {metrics}")
 
-    # If possibile, load the metrics from cached data on disk, to speed up the
-    # script on subsequent invocations.
-    cache_file = Path(f"results/{graph_name}_metrics.csv")
-    fluidc_metrics = None
-    if use_cache:
-        try:
-            fluidc_metrics = pd.read_csv(cache_file)
-        except:
-            print(
-                f"Failed to read {cache_file.as_posix()!r}, recalculating metrics for {graph_name!r}"
-            )
-
-    if fluidc_metrics is None:
-        # Calculate metric for all results.
-        fluidc_metrics = calc_metrics(fluidc_comm, ground_truth_comm)
-
-    # Always save the DataFrame to disk, to later reuse as cache.
-    fluidc_metrics.to_csv(cache_file)
-    print(f"Saved {cache_file.as_posix()!r}")
-
-    # Update the first DataFrame with metric score.
-    fluidc_metadata = pd.merge(fluidc_metadata, fluidc_metrics, on="name")
-
     # Exclude the unused columns for metric plot.
     excluded_metrics = [x for x in metrics if x != metric]
-    data = fluidc_metadata.drop(["name", "time", *excluded_metrics], axis=1)
+    data = fluidc_metrics.drop(["name", "time", *excluded_metrics], axis=1)
 
     # Sort by seed and max_iter.
     data = data.sort_values(by=["seed", "max_iter"])
@@ -158,17 +128,20 @@ def plot_metric(
     ax.set_ylabel(metric.upper())
     # Since we know in advance max_iter values, show the values on log scale and
     # fix the ticks to max_iter values.
-    ax.set_xscale("log")
+    # ax.set_xscale("log")
     ax.set_xticks(stats["max_iter"])
     ax.xaxis.set_major_formatter(plt.ScalarFormatter())
 
-    plot_name = f"plots/{graph_name}_{metric}.pdf"
+    assert isinstance(output_dir, Path)
+    output_dir = output_dir / Path("plots")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    plot_name = output_dir / Path(f"{graph_name}_{metric}.pdf")
     plt.savefig(plot_name)
-    print(f"Saved {plot_name!r}")
+    print(f"Saved {plot_name.as_posix()!r}")
     plt.close()
 
 
-def time_plot(fluidc_metadata, graph_name):
+def time_plot(fluidc_metadata, graph_name, output_dir=Path("results")):
     # Exclude the unused "name" column.
     data = fluidc_metadata.drop("name", axis=1)
 
@@ -197,9 +170,12 @@ def time_plot(fluidc_metadata, graph_name):
     ax.set_xticks(stats["max_iter"])
     ax.xaxis.set_major_formatter(plt.ScalarFormatter())
 
-    plot_name = f"plots/{graph_name}_time-plot.pdf"
+    assert isinstance(output_dir, Path)
+    output_dir = output_dir / Path("plots")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    plot_name = output_dir / Path(f"{graph_name}_time.pdf")
     plt.savefig(plot_name)
-    print(f"Saved {plot_name!r}")
+    print(f"Saved {plot_name.as_posix()!r}")
     plt.close()
 
 
@@ -207,32 +183,30 @@ def main(graph_name, use_cache, results_dir):
     ground = ground_truth.load(graph_name)
     fluidc_metadata, fluidc_comm = load_results_data(graph_name, results_dir)
 
-    time_plot(fluidc_metadata, graph_name)
+    time_plot(fluidc_metadata, graph_name, output_dir=results_dir)
 
-    plot_metric(
-        fluidc_metadata,
-        fluidc_comm,
-        ground,
-        graph_name,
-        metric="nmi",
-        use_cache=use_cache,
-    )
-    plot_metric(
-        fluidc_metadata,
-        fluidc_comm,
-        ground,
-        graph_name,
-        metric="ari",
-        use_cache=use_cache,
-    )
-    plot_metric(
-        fluidc_metadata,
-        fluidc_comm,
-        ground,
-        graph_name,
-        metric="purity",
-        use_cache=use_cache,
-    )
+    # Calculate metrics one and save/load from cache.
+    metrics_cache_file = Path(results_dir) / Path(f"{graph_name}_metrics.csv")
+    fluidc_metrics = None
+    if use_cache:
+        try:
+            fluidc_metrics = pd.read_csv(metrics_cache_file)
+        except Exception:
+            print(
+                f"Failed to read {metrics_cache_file.as_posix()!r}, recalculating metrics for {graph_name!r}"
+            )
+
+    if fluidc_metrics is None:
+        fluidc_metrics = calc_metrics(fluidc_comm, ground)
+
+        # Update the first DataFrame with metric score.
+        fluidc_metrics = pd.merge(fluidc_metadata, fluidc_metrics, on="name")
+
+    fluidc_metrics.to_csv(metrics_cache_file, index=False)
+    print(f"Saved {metrics_cache_file.as_posix()!r}")
+
+    for metric in ["nmi", "ari", "purity"]:
+        plot_metric(fluidc_metrics, graph_name, metric=metric, output_dir=results_dir)
 
 
 if __name__ == "__main__":
