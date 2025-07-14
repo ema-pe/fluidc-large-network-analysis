@@ -125,10 +125,6 @@ def plot_metric(
         # Calculate metric for all results.
         fluidc_metrics = calc_metrics(fluidc_comm, ground_truth_comm)
 
-    import pdb
-
-    pdb.set_trace()
-
     # Always save the DataFrame to disk, to later reuse as cache.
     fluidc_metrics.to_csv(cache_file)
     print(f"Saved {cache_file.as_posix()!r}")
@@ -241,7 +237,7 @@ def main(graph_name, use_cache):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--graph-name", help="Graph name", required=True)
+    parser.add_argument("--graph-name", help="Graph name", required=True, nargs="+")
     parser.add_argument(
         "--no-cache",
         action="store_true",
@@ -250,4 +246,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args.graph_name, not args.no_cache)
+    for graph_name in args.graph_name:
+        print(f"Plotting {graph_name!r}...")
+        main(graph_name, not args.no_cache)
