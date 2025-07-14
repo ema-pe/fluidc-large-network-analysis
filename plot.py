@@ -15,13 +15,13 @@ from tqdm import tqdm
 import ground_truth
 
 
-def load_results_data(graph_name):
+def load_results_data(graph_name, results_dir):
     communities = dict()
 
-    results = list(Path("results/").glob(f"{graph_name}.fluidc.*.txt.gz"))
+    results = list(Path(results_dir).glob(f"{graph_name}.fluidc.*.txt.gz"))
     name, seed, max_iter, time = [], [], [], []
     for result in tqdm(results, desc="Loading results data"):
-        # I need to extract data directly form the path's name, as example:
+        # I need to extract data directly from the path's name, as example:
         # "com-amazon.fluidc.513226.200.74.txt.gz"
         info = result.name.split(".")[2:5]
 
@@ -203,9 +203,9 @@ def time_plot(fluidc_metadata, graph_name):
     plt.close()
 
 
-def main(graph_name, use_cache):
+def main(graph_name, use_cache, results_dir):
     ground = ground_truth.load(graph_name)
-    fluidc_metadata, fluidc_comm = load_results_data(graph_name)
+    fluidc_metadata, fluidc_comm = load_results_data(graph_name, results_dir)
 
     time_plot(fluidc_metadata, graph_name)
 
@@ -237,6 +237,12 @@ def main(graph_name, use_cache):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--results-dir",
+        help="Directory where are the result files",
+        type=Path,
+        required=True,
+    )
     parser.add_argument("--graph-name", help="Graph name", required=True, nargs="+")
     parser.add_argument(
         "--no-cache",
@@ -248,4 +254,4 @@ if __name__ == "__main__":
 
     for graph_name in args.graph_name:
         print(f"Plotting {graph_name!r}...")
-        main(graph_name, not args.no_cache)
+        main(graph_name, not args.no_cache, args.results_dir)
