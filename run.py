@@ -3,11 +3,15 @@ import subprocess
 import itertools
 import multiprocessing
 
+from tqdm import tqdm
+
+import fluidc
+
 # (graph_path, ground_truth)
 networks = [
-#    ("dataset/com-amazon.ungraph.txt.gz", "75149"),
-#    ("dataset/com-dblp.ungraph.txt.gz", "13423"),
-    ("dataset/com-youtube.ungraph.txt.gz", "14870"),
+    ("dataset/com-amazon.ungraph.txt.gz", 75149),
+    #    ("dataset/com-dblp.ungraph.txt.gz", 13423),
+    #    ("dataset/com-youtube.ungraph.txt.gz", 14870),
 ]
 
 # RNG seeds.
@@ -34,38 +38,11 @@ seeds = [
     500351,
 ]
 
-# FluidC max iterations parameters.
-max_iters = [10, 50, 100, 200, 500, 1000]
+# FluidC max iterations parameters. #max_iters = [10, 50, 100, 200, 500, 1000]
 
 
-def run_experiment(args):
-    graph, truth, seed, max_iter = args
-    prefix = f"{Path(graph).name}.fluidc.{seed}.{max_iter}"
-    cmd = [
-        "python",
-        "test.py",
-        "--seed",
-        str(seed),
-        "--graph",
-        graph,
-        "--ground-truth",
-        str(truth),
-        "--max-iter",
-        str(max_iter),
-    ]
-    print(f"Running: {' '.join(cmd)}")
-
-    # Start experiment.
-    process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
-    )
-
-    # Print the experiment's output line by line.
-    for line in process.stdout:
-        print(f"{prefix}: {line.rstrip()}")
-
-    # Wait for completion before continue.
-    return process.wait()
+seeds = [63, 53, 42]
+max_iters = [2, 5, 7, 10, 15]
 
 
 # Create all possibile experiments with networks, seeds and max_iter arguments.
@@ -76,6 +53,12 @@ all_args = [
 
 # Run all experiments in a sequential mode. Why? Because with some networks the
 # RAM can explode.
-for i in range(len(all_args)):
-    ret = run_experiment(all_args[i])
-    print(f"Experiment {i+1}/{len(all_args)} completed with exit code {ret}.")
+for i in tqdm(range(len(all_args))):
+    graph, truth, seed, max_iter = all_args[i]
+
+    results_dir = Path("results_tmp")
+
+    print(
+        f"Running experiment: graph={graph}, truth={truth}, seed={seed}, max_iter={max_iter}"
+    )
+    fluidc.run(graph, seed, truth, max_iter, result_dir=results_dir)
