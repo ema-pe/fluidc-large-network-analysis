@@ -1,4 +1,8 @@
+"""This module runs several FluidC experiments using predefined graphs, seeds,
+and maximum iteration limits. It saves the results to the "Results" directory on
+disk. The module can only be executed as a script."""
 # pylint: disable=import-error
+
 from pathlib import Path
 import itertools
 

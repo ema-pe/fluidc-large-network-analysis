@@ -1,4 +1,21 @@
+"""This module generates plots that visualize the results of FluidC community
+detection experiments. The plots are saved in the "plots" directory under the
+results directory where the original data can be found. The module is designed
+for use as a script.
+
+For each complex network, the module calculates the normalized mutual
+information (NMI), adjusted rand index (ARI), and cluster purity metrics for
+each experiment against the ground truth communities. The module also produces
+an NMI-based similarity matrix for all experiments and ground truth for a single
+network. These metrics are cached to avoid recalculating them with each run.It
+also generates execution time plots for each network and an aggregated plot of
+all networks.
+
+Example usage:
+    python plot.py --results-dir results --graph-name com-amazon ...
+"""
 # pylint: disable=import-error,redefined-outer-name,too-many-locals
+
 from pathlib import Path
 import argparse
 import functools
@@ -18,6 +35,19 @@ import ground_truth
 
 @functools.cache
 def load_results_data(graph_name, results_dir):
+    """Returns FluidC result data for a given graph, extracting metadata and
+    community assignments.
+
+    Args:
+        graph_name (str): Name of the graph.
+        results_dir (Path): Directory containing result files.
+
+    Returns:
+        data (pd.DataFrame): DataFrame with metadata (name, seed, max_iter,
+            time) for each result file.
+        communities (dict): Mapping from result file names to their unique
+            community assignments.
+    """
     communities = {}
 
     results = list(Path(results_dir).glob(f"{graph_name}.fluidc.*.txt.gz"))
@@ -48,6 +78,17 @@ def load_results_data(graph_name, results_dir):
 
 @functools.cache
 def load_metrics(graph_name, results_dir, use_cache=True):
+    """Returns the clustering metrics (NMI, ARI and purity) for the given graph.
+
+    Args:
+        graph_name (str): Name of the graph.
+        results_dir (Path): Directory containing result files.
+        use_cache (bool): Whether to use cached metrics if available.
+
+    Returns:
+        fluidc_metrics (pd.DataFrame): DataFrame containing metadata and
+            clustering metrics.
+    """
     fluidc_metadata, fluidc_comm = load_results_data(graph_name, results_dir)
 
     metrics_cache_file = Path(results_dir) / Path(f"{graph_name}_metrics.csv")
@@ -78,6 +119,16 @@ def load_metrics(graph_name, results_dir, use_cache=True):
 
 @functools.cache
 def clusters_to_labels(clusters, all_vertices):
+    """Converts a list of clusters to a label vector for all vertices.
+
+    Args:
+        clusters (list): List of clusters (each cluster is a list of vertex IDs).
+        all_vertices (list): List of all vertex IDs to assign labels.
+
+    Returns:
+        labels (list): List of integer labels for each vertex (or -1 if not in
+            any cluster).
+    """
     label_map = {}
     for label, cluster in enumerate(clusters):
         for v in cluster:
@@ -88,6 +139,18 @@ def clusters_to_labels(clusters, all_vertices):
 
 
 def calc_metrics(fluidc_comm, ground_truth_comm):
+    """Returns clustering metrics (NMI, ARI and purity) for each FluidC
+    experiment against the ground truth communities.
+
+    Args:
+        fluidc_comm (dict): Mapping from result names to their community
+            assignments.
+
+        ground_truth_comm (list): Ground truth community assignments.
+
+    Returns:
+        df (pd.DataFrame): DataFrame with columns: name, nmi, ari, purity.
+    """
     data = []
     for result in tqdm(fluidc_comm, desc="Calculating metrics"):
         comm = fluidc_comm[result]
@@ -139,15 +202,18 @@ def calc_metrics(fluidc_comm, ground_truth_comm):
 def plot_similarity_matrix_nmi(
     graph_name, results_dir, output_dir=Path("results"), use_cache=True
 ):
-    """Plots a similarity matrix for a specific graph, showing similarity
-    between different seed runs and ground truth for the highest max_iter value.
-
-    The similarity metric is NMI.
+    """Plots a similarity matrix (using NMI metric) for a specific graph,
+    showing similarity between different FluidC seed runs and the ground truth
+    for the highest max_iter value.
 
     Args:
-        graph_name: Name of the graph
-        results_dir: Directory containing result files
-        output_dir: Directory to save the output plot
+        graph_name (str): Name of the graph.
+        results_dir (Path): Directory containing result files.
+        output_dir (Path): Directory to save the output plot.
+        use_cache (bool): Whether to use cached metrics if available.
+
+    Returns:
+        None
     """
     # Load the metrics data and community assignments.
     fluidc_metrics = load_metrics(graph_name, results_dir, use_cache)
@@ -210,7 +276,8 @@ def plot_similarity_matrix_nmi(
     im = ax.imshow(similarity_matrix, cmap="viridis", vmin=0, vmax=1)
 
     # Add colorbar.
-    ax.figure.colorbar(im, ax=ax).set_ylabel("NMI", rotation=-90, va="bottom")
+    cbar = ax.figure.colorbar(im, ax=ax)
+    cbar.ax.set_ylabel("NMI", rotation=-90, va="bottom")
 
     # Show ticks and labels.
     ax.set_xticks(np.arange(matrix_size))
@@ -250,6 +317,18 @@ def plot_similarity_matrix_nmi(
 
 
 def plot_metric(fluidc_metrics, graph_name, metric="nmi", output_dir=Path("results")):
+    """Plots the specified clustering metric (NMI, ARI, purity) as a function of
+    max_iter for a graph.
+
+    Args:
+        fluidc_metrics (pd.DataFrame): DataFrame with clustering metrics.
+        graph_name (str): Name of the graph.
+        metric (str): Metric to plot ("nmi", "ari", or "purity").
+        output_dir (Path): Directory to save the output plot.
+
+    Returns:
+        None
+    """
     metrics = ("nmi", "ari", "purity")
     if metric not in metrics:
         raise ValueError(f"Found {metric!r}, expected one of {metrics}")
@@ -297,6 +376,17 @@ def plot_metric(fluidc_metrics, graph_name, metric="nmi", output_dir=Path("resul
 
 
 def time_plot(fluidc_metrics, graph_name, output_dir=Path("results")):
+    """Plots the average execution time of FluidC experiment on a single graph
+    as a function of max_iter.
+
+    Args:
+        fluidc_metrics (pd.DataFrame): DataFrame with execution times.
+        graph_name (str): Name of the graph.
+        output_dir (Path): Directory to save the output plot.
+
+    Returns:
+        None
+    """
     # Exclude unused columns.
     data = fluidc_metrics[["name", "seed", "max_iter", "time"]]
 
@@ -333,7 +423,16 @@ def time_plot(fluidc_metrics, graph_name, output_dir=Path("results")):
 
 def time_aggregated_plot(graphs_data, output_dir=Path("results")):
     """Saves the aggregated plot for execution time of FluidC on various graphs.
-    It is the aggregated version of time_plot()."""
+    It is the aggregated version of time_plot().
+
+    Args:
+        graphs_data (dict): Dictionary mapping graph names to their metrics
+            DataFrames.
+        output_dir (Path): Directory to save the output plot.
+
+    Returns:
+        None
+    """
     fig, ax = plt.subplots()  # pylint: disable=unused-variable
     for name, metrics in graphs_data.items():
         # See time_plot for comments on the loop instructions.
@@ -370,6 +469,18 @@ def time_aggregated_plot(graphs_data, output_dir=Path("results")):
 
 
 def plot_single_graph(graph_name, use_cache, results_dir):
+    """Generates and saves all relevant plots (execution time, NMI, ARI, purity,
+    similarity matrix) for a single graph.
+
+    Args:
+        graph_name (str): Name of the graph.
+        use_cache (bool): Whether to use cached metrics if available.
+        results_dir (Path): Directory containing result files used to generate
+            the plots (and to save the plots).
+
+    Returns:
+        None
+    """
     fluidc_metrics = load_metrics(graph_name, results_dir, use_cache)
 
     time_plot(fluidc_metrics, graph_name, output_dir=results_dir)
@@ -383,6 +494,18 @@ def plot_single_graph(graph_name, use_cache, results_dir):
 
 
 def plot_aggregate_graphs(graph_names, use_cache, results_dir):
+    """Generates and saves the aggregated execution time plot for multiple
+    graphs.
+
+    Args:
+        graph_names (list): List of graph names.
+        use_cache (bool): Whether to use cached metrics if available.
+        results_dir (Path): Directory containing result files, used to generate
+            the plots (and save the plots).
+
+    Returns:
+        None
+    """
     data = {}
     for graph_name in graph_names:
         data[graph_name] = load_metrics(graph_name, results_dir, use_cache)

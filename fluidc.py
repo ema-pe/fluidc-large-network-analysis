@@ -1,4 +1,9 @@
+"""This module exposes the run() function that wraps the FluidC algorithm from
+the NetworkX library by saving the results to a file on disk.
+
+The module can be imported or executed as a command-line script."""
 # pylint: disable=import-error
+
 from pathlib import Path
 import time
 import gzip
@@ -9,7 +14,7 @@ import networkx as nx
 
 
 def run(graph_path, seed, ground_truth, max_iter, results_dir=Path("results")):
-    """Runs FluidC community detection algorithm on the provided graph and saves
+    """Runs FluidC community detection algorithm on the provided gra ph and saves
     the detected communities to a file on disk.
 
     Args:
