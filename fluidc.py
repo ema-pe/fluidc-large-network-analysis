@@ -6,7 +6,7 @@ import argparse
 import networkx as nx
 
 
-def run(graph_path, seed, ground_truth, max_iter, result_dir=Path("results")):
+def run(graph_path, seed, ground_truth, max_iter, results_dir=Path("results")):
     """Runs FluidC community detection algorithm on the provided graph and saves
     the detected communities to a file on disk.
 
@@ -15,11 +15,11 @@ def run(graph_path, seed, ground_truth, max_iter, result_dir=Path("results")):
         seed (int): RNG seed (must be non-negative).
         ground_truth (int): FluidC k argument (number of communities, must be positive).
         max_iter (int): FluidC max iterations (must be positive).
-        result_dir (Path): Directory to save the result. Defaults to "results".
+        results_dir (Path): Directory to save the result. Defaults to "results".
     """
     # Enforce Path objects.
     graph_path = Path(graph_path)
-    result_dir = Path(result_dir)
+    results_dir = Path(results_dir)
 
     print(f"Loading graph {graph_path.as_posix()!r}...")
 
@@ -46,11 +46,11 @@ def run(graph_path, seed, ground_truth, max_iter, result_dir=Path("results")):
     print("Saving found communities...")
 
     # Create directory and output file name.
-    result_dir.mkdir(exist_ok=True)
+    results_dir.mkdir(exist_ok=True)
     graph_name = graph_path.name.split(".")[
         0
     ]  # Keep only the graph name (eg. com-youtube).
-    communities_path = result_dir / Path(
+    communities_path = results_dir / Path(
         f"{graph_name}.fluidc.{seed}.{max_iter}.{seconds}.txt.gz"
     )
 
@@ -81,16 +81,15 @@ def _main():
         type=Path,
         help="Directory to save result file",
         required=True,
-        default=Path("results"),
     )
     args = parser.parse_args()
 
-    run_fluidc_analysis(
+    run(
         graph_path=args.graph,
         seed=args.seed,
         ground_truth=args.ground_truth,
         max_iter=args.max_iter,
-        results_dir=rgs.result_dir,
+        results_dir=args.result_dir,
     )
 
 

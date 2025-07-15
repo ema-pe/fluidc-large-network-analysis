@@ -127,6 +127,115 @@ def calc_metrics(fluidc_comm, ground_truth_comm):
     return df
 
 
+def plot_similarity_matrix_nmi(
+    graph_name, results_dir, output_dir=Path("results"), use_cache=True
+):
+    """Plots a similarity matrix for a specific graph, showing similarity
+    between different seed runs and ground truth for the highest max_iter value.
+
+    The similarity metric is NMI.
+
+    Args:
+        graph_name: Name of the graph
+        results_dir: Directory containing result files
+        output_dir: Directory to save the output plot
+    """
+    # Load the metrics data and community assignments.
+    fluidc_metrics = load_metrics(graph_name, results_dir, use_cache)
+    _, fluidc_comm = load_results_data(graph_name, results_dir)
+
+    # Load ground truth communities.
+    ground_truth_comm = ground_truth.load(graph_name)
+
+    # Find the highest max_iter value.
+    highest_max_iter = fluidc_metrics["max_iter"].max()
+
+    # Filter to only include results with the highest max_iter.
+    filtered_metrics = fluidc_metrics[fluidc_metrics["max_iter"] == highest_max_iter]
+
+    # Create a list of all community assignments to compare (including ground
+    # truth).
+    all_comms = {}
+    for _, row in filtered_metrics.iterrows():
+        result_name = row["name"]
+        all_comms[f"Seed {row['seed']}"] = fluidc_comm[result_name]
+
+    # Add ground truth to the comparison.
+    all_comms["Ground Truth"] = ground_truth_comm
+
+    # Create a similarity matrix.
+    labels = list(all_comms.keys())
+    matrix_size = len(labels)
+    similarity_matrix = np.zeros((matrix_size, matrix_size))
+
+    # Calculate similarity metrics for each pair
+    for i, label_i in enumerate(tqdm(labels, desc="Calculating NMI similarity matrix")):
+        comm_i = all_comms[label_i]
+
+        for j, label_j in enumerate(labels):
+            if i == j:
+                # Same communities, perfect similarity
+                similarity_matrix[i, j] = 1.0
+                continue
+
+            comm_j = all_comms[label_j]
+
+            # Gather all vertices present in both clusterings
+            all_vertices = tuple(sorted(set().union(*comm_i, *comm_j)))
+
+            # Convert to labels format for metric calculation
+            labels_i = clusters_to_labels(comm_i, all_vertices)
+            labels_j = clusters_to_labels(comm_j, all_vertices)
+
+            # Calculate the requested similarity metric
+            similarity_matrix[i, j] = normalized_mutual_info_score(labels_i, labels_j)
+
+    # Create the heatmap.
+    fig, ax = plt.subplots(figsize=(10, 8))
+    # Show the matrix as heatmap, with a specific color map and min/max values.
+    im = ax.imshow(similarity_matrix, cmap="viridis", vmin=0, vmax=1)
+
+    # Add colorbar.
+    cbar = ax.figure.colorbar(im, ax=ax)
+    cbar.ax.set_ylabel("NMI", rotation=-90, va="bottom")
+
+    # Show ticks and labels.
+    ax.set_xticks(np.arange(matrix_size))
+    ax.set_yticks(np.arange(matrix_size))
+    ax.set_xticklabels(labels)
+    ax.set_yticklabels(labels)
+
+    # Rotate the tick labels and set their alignment, because they too long (eg.
+    # "Seed XXXX" or "Ground Truth").
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    for i in range(matrix_size):
+        for j in range(matrix_size):
+            text_color = "white" if similarity_matrix[i, j] < 0.7 else "black"
+            ax.text(
+                j,
+                i,
+                f"{similarity_matrix[i, j]:.3f}",
+                ha="center",
+                va="center",
+                color=text_color,
+            )
+
+    fig.tight_layout()
+
+    # Save the plot.
+    assert isinstance(output_dir, Path)
+    output_dir = output_dir / Path("plots")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    plot_name = output_dir / Path(
+        f"{graph_name}_similarity_matrix_nmi_{highest_max_iter}.pdf"
+    )
+    plt.savefig(plot_name)
+    print(f"Saved {plot_name.as_posix()!r}")
+    plt.close()
+
+
 def plot_metric(fluidc_metrics, graph_name, metric="nmi", output_dir=Path("results")):
     metrics = ("nmi", "ari", "purity")
     if metric not in metrics:
@@ -220,7 +329,7 @@ def time_aggregated_plot(graphs_data, output_dir=Path("results")):
         stats = data.groupby("max_iter", as_index=False)["time"].agg(["mean", "std"])
 
         # Get the next color, so we can use also for "fill_between".
-        color = ax._get_lines.get_next_color()
+        color = ax._get_lines.get_next_color()  # pylint: disable=protected-access
 
         stats.plot(x="max_iter", y="mean", ax=ax, marker="o", color=color, label=name)
         ax.fill_between(
@@ -254,6 +363,10 @@ def plot_single_graph(graph_name, use_cache, results_dir):
 
     for metric in ["nmi", "ari", "purity"]:
         plot_metric(fluidc_metrics, graph_name, metric=metric, output_dir=results_dir)
+
+    plot_similarity_matrix_nmi(
+        graph_name, results_dir, output_dir=results_dir, use_cache=use_cache
+    )
 
 
 def plot_aggregate_graphs(graph_names, use_cache, results_dir):
