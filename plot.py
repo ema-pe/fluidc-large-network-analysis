@@ -1,3 +1,4 @@
+# pylint: disable=import-error,redefined-outer-name
 from pathlib import Path
 import argparse
 import functools
@@ -15,8 +16,9 @@ from tqdm import tqdm
 import ground_truth
 
 
+@functools.cache
 def load_results_data(graph_name, results_dir):
-    communities = dict()
+    communities = {}
 
     results = list(Path(results_dir).glob(f"{graph_name}.fluidc.*.txt.gz"))
     name, seed, max_iter, time = [], [], [], []
@@ -45,9 +47,37 @@ def load_results_data(graph_name, results_dir):
 
 
 @functools.cache
-def clusters_to_labels(clusters, all_vertices):
-    clusters_list = list(clusters)
+def load_metrics(graph_name, results_dir, use_cache=True):
+    fluidc_metadata, fluidc_comm = load_results_data(graph_name, results_dir)
 
+    metrics_cache_file = Path(results_dir) / Path(f"{graph_name}_metrics.csv")
+
+    fluidc_metrics = None
+    if use_cache:
+        try:
+            fluidc_metrics = pd.read_csv(metrics_cache_file)
+        except Exception:  # pylint: disable=broad-exception-caught
+            print(f"Failed to read {metrics_cache_file.as_posix()!r}")
+
+    if fluidc_metrics is None:
+        print(f"Calculating metrics for {graph_name!r}")
+        ground = ground_truth.load(graph_name)
+        fluidc_metrics = calc_metrics(fluidc_comm, ground)
+
+    # We want the two dataframes, fluidc_metadata and fluidc_metrics, to be
+    # merged in a single one. If fluid_metrics is loaded from disk, it is
+    # already merged, otherwise if it is calculated we need to merge.
+    if not set(fluidc_metadata.columns).issubset(fluidc_metrics.columns):
+        fluidc_metrics = pd.merge(fluidc_metadata, fluidc_metrics, on="name")
+
+        fluidc_metrics.to_csv(metrics_cache_file, index=False)
+        print(f"Saved {metrics_cache_file.as_posix()!r}")
+
+    return fluidc_metrics
+
+
+@functools.cache
+def clusters_to_labels(clusters, all_vertices):
     label_map = {}
     for label, cluster in enumerate(clusters):
         for v in cluster:
@@ -59,7 +89,7 @@ def clusters_to_labels(clusters, all_vertices):
 
 def calc_metrics(fluidc_comm, ground_truth_comm):
     data = []
-    for result in tqdm(fluidc_comm, desc=f"Calculating metrics"):
+    for result in tqdm(fluidc_comm, desc="Calculating metrics"):
         comm = fluidc_comm[result]
 
         # Gather all vertices present in both clustering. I need tuple to be an
@@ -144,9 +174,9 @@ def plot_metric(fluidc_metrics, graph_name, metric="nmi", output_dir=Path("resul
     plt.close()
 
 
-def time_plot(fluidc_metadata, graph_name, output_dir=Path("results")):
-    # Exclude the unused "name" column.
-    data = fluidc_metadata.drop("name", axis=1)
+def time_plot(fluidc_metrics, graph_name, output_dir=Path("results")):
+    # Exclude unused columns.
+    data = fluidc_metrics[["name", "seed", "max_iter", "time"]]
 
     # Sort by seed and max_iter.
     data = data.sort_values(by=["seed", "max_iter"])
@@ -182,34 +212,21 @@ def time_plot(fluidc_metadata, graph_name, output_dir=Path("results")):
     plt.close()
 
 
-def main(graph_name, use_cache, results_dir):
-    ground = ground_truth.load(graph_name)
-    fluidc_metadata, fluidc_comm = load_results_data(graph_name, results_dir)
+def plot_single_graph(graph_name, use_cache, results_dir):
+    fluidc_metrics = load_metrics(graph_name, results_dir, use_cache)
 
-    time_plot(fluidc_metadata, graph_name, output_dir=results_dir)
-
-    # Calculate metrics one and save/load from cache.
-    metrics_cache_file = Path(results_dir) / Path(f"{graph_name}_metrics.csv")
-    fluidc_metrics = None
-    if use_cache:
-        try:
-            fluidc_metrics = pd.read_csv(metrics_cache_file)
-        except Exception:
-            print(
-                f"Failed to read {metrics_cache_file.as_posix()!r}, recalculating metrics for {graph_name!r}"
-            )
-
-    if fluidc_metrics is None:
-        fluidc_metrics = calc_metrics(fluidc_comm, ground)
-
-        # Update the first DataFrame with metric score.
-        fluidc_metrics = pd.merge(fluidc_metadata, fluidc_metrics, on="name")
-
-    fluidc_metrics.to_csv(metrics_cache_file, index=False)
-    print(f"Saved {metrics_cache_file.as_posix()!r}")
+    time_plot(fluidc_metrics, graph_name, output_dir=results_dir)
 
     for metric in ["nmi", "ari", "purity"]:
         plot_metric(fluidc_metrics, graph_name, metric=metric, output_dir=results_dir)
+
+
+def plot_aggregate_graphs(graph_names, use_cache, results_dir):
+    data = {}
+    for graph_name in graph_names:
+        data[graph_name] = load_metrics(graph_name, results_dir, use_cache)
+
+    # WIP
 
 
 if __name__ == "__main__":
@@ -231,4 +248,7 @@ if __name__ == "__main__":
 
     for graph_name in args.graph_name:
         print(f"Plotting {graph_name!r}...")
-        main(graph_name, not args.no_cache, args.results_dir)
+        plot_single_graph(graph_name, not args.no_cache, args.results_dir)
+
+    print("Plotting aggregate plots...")
+    plot_aggregate_graphs(args.graph_name, not args.no_cache, args.results_dir)

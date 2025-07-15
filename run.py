@@ -1,7 +1,6 @@
+# pylint: disable=import-error
 from pathlib import Path
-import subprocess
 import itertools
-import multiprocessing
 
 from tqdm import tqdm
 
@@ -10,8 +9,8 @@ import fluidc
 # (graph_path, ground_truth)
 networks = [
     ("dataset/com-amazon.ungraph.txt.gz", 75149),
-    #    ("dataset/com-dblp.ungraph.txt.gz", 13423),
-    #    ("dataset/com-youtube.ungraph.txt.gz", 14870),
+    ("dataset/com-dblp.ungraph.txt.gz", 13423),
+    ("dataset/com-youtube.ungraph.txt.gz", 14870),
 ]
 
 # RNG seeds.
@@ -29,7 +28,7 @@ seeds = [
 ]
 
 # FluidC max iterations parameters.
-max_iters = [2, 5, 7, 10, 15]  # For com-amazon graph.
+max_iters = [2, 5, 7, 10, 15]
 
 
 # Create all possibile experiments with networks, seeds and max_iter arguments.
