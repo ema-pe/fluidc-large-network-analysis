@@ -197,9 +197,6 @@ def time_plot(fluidc_metrics, graph_name, output_dir=Path("results")):
     ax.grid(True, alpha=0.5)
     ax.set_xlabel("Max iterations")
     ax.set_ylabel("Seconds")
-    # Since we know in advance max_iter values, show the values on log scale and
-    # fix the ticks to max_iter values.
-    ax.set_xscale("log")
     ax.set_xticks(stats["max_iter"])
     ax.xaxis.set_major_formatter(plt.ScalarFormatter())
 
@@ -207,6 +204,44 @@ def time_plot(fluidc_metrics, graph_name, output_dir=Path("results")):
     output_dir = output_dir / Path("plots")
     output_dir.mkdir(parents=True, exist_ok=True)
     plot_name = output_dir / Path(f"{graph_name}_time.pdf")
+    plt.savefig(plot_name)
+    print(f"Saved {plot_name.as_posix()!r}")
+    plt.close()
+
+
+def time_aggregated_plot(graphs_data, output_dir=Path("results")):
+    """Saves the aggregated plot for execution time of FluidC on various graphs.
+    It is the aggregated version of time_plot()."""
+    fig, ax = plt.subplots()  # pylint: disable=unused-variable
+    for name, metrics in graphs_data.items():
+        # See time_plot for comments on the loop instructions.
+        data = metrics[["name", "seed", "max_iter", "time"]]
+        data = data.sort_values(by=["seed", "max_iter"])
+        stats = data.groupby("max_iter", as_index=False)["time"].agg(["mean", "std"])
+
+        # Get the next color, so we can use also for "fill_between".
+        color = ax._get_lines.get_next_color()
+
+        stats.plot(x="max_iter", y="mean", ax=ax, marker="o", color=color, label=name)
+        ax.fill_between(
+            stats["max_iter"],
+            stats["mean"] - stats["std"],
+            stats["mean"] + stats["std"],
+            color=color,
+            alpha=0.2,
+        )
+
+    ax.legend()
+    ax.grid(True, alpha=0.5)
+    ax.set_xlabel("Max iterations")
+    ax.set_ylabel("Seconds")
+    ax.set_xticks(stats["max_iter"])
+    ax.xaxis.set_major_formatter(plt.ScalarFormatter())
+
+    assert isinstance(output_dir, Path)
+    output_dir = output_dir / Path("plots")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    plot_name = output_dir / Path("aggregated_time.pdf")
     plt.savefig(plot_name)
     print(f"Saved {plot_name.as_posix()!r}")
     plt.close()
@@ -226,7 +261,7 @@ def plot_aggregate_graphs(graph_names, use_cache, results_dir):
     for graph_name in graph_names:
         data[graph_name] = load_metrics(graph_name, results_dir, use_cache)
 
-    # WIP
+    time_aggregated_plot(data, results_dir)
 
 
 if __name__ == "__main__":
