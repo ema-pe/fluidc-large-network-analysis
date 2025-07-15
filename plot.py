@@ -102,6 +102,13 @@ def calc_metrics(fluidc_comm, ground_truth_comm):
         ground_labels = clusters_to_labels(ground_truth_comm, all_vertices)
         result_labels = clusters_to_labels(comm, all_vertices)
 
+        # Remove nodes where either label is -1, to avoid distortion in purity
+        # and NMI, since sklearn treats -1 as valid cluster label.
+        filtered = [(t, p) for t, p in zip(ground_labels, result_labels) if t != -1 and p != -1]
+        if not filtered:
+            raise ValueError("filtered is empty")
+        ground_labels, result_labels = zip(*filtered)
+
         nmi = normalized_mutual_info_score(ground_labels, result_labels)
         ari = adjusted_rand_score(ground_labels, result_labels)
 
@@ -118,7 +125,7 @@ def calc_metrics(fluidc_comm, ground_truth_comm):
         matrix = contingency_matrix(ground_labels, result_labels)
         # Use np.amax to get the largest value in each column (max for each
         # predicted cluster).
-        purity = np.sum(np.amax(matrix, axis=0)) / np.sum(matrix)
+        purity = np.sum(np.amax(matrix, axis=1)) / np.sum(matrix)
 
         data.append((result, nmi, ari, purity))
 
