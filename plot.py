@@ -126,11 +126,14 @@ def plot_metric(fluidc_metrics, graph_name, metric="nmi", output_dir=Path("resul
     ax.grid(True, alpha=0.5)
     ax.set_xlabel("Max iterations")
     ax.set_ylabel(metric.upper())
-    # Since we know in advance max_iter values, show the values on log scale and
-    # fix the ticks to max_iter values.
-    # ax.set_xscale("log")
     ax.set_xticks(stats["max_iter"])
     ax.xaxis.set_major_formatter(plt.ScalarFormatter())
+
+    # Set the Y axis to scientific notation if the values are too small.
+    yaxis_formatter = plt.ScalarFormatter(useMathText=True)
+    yaxis_formatter.set_scientific(True)
+    yaxis_formatter.set_powerlimits((-2, 2))
+    ax.yaxis.set_major_formatter(yaxis_formatter)
 
     assert isinstance(output_dir, Path)
     output_dir = output_dir / Path("plots")
