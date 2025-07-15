@@ -14,6 +14,7 @@ all networks.
 Example usage:
     python plot.py --results-dir results --graph-name com-amazon ...
 """
+
 # pylint: disable=import-error,redefined-outer-name,too-many-locals
 
 from pathlib import Path
@@ -271,19 +272,19 @@ def plot_similarity_matrix_nmi(
             similarity_matrix[i, j] = normalized_mutual_info_score(labels_i, labels_j)
 
     # Create the heatmap.
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(12, 10))
     # Show the matrix as heatmap, with a specific color map and min/max values.
     im = ax.imshow(similarity_matrix, cmap="viridis", vmin=0, vmax=1)
 
     # Add colorbar.
     cbar = ax.figure.colorbar(im, ax=ax)
-    cbar.ax.set_ylabel("NMI", rotation=-90, va="bottom")
+    cbar.ax.set_ylabel("NMI", rotation=-90, va="bottom", fontsize=14)
 
     # Show ticks and labels.
     ax.set_xticks(np.arange(matrix_size))
     ax.set_yticks(np.arange(matrix_size))
-    ax.set_xticklabels(labels)
-    ax.set_yticklabels(labels)
+    ax.set_xticklabels(labels, fontsize=12)
+    ax.set_yticklabels(labels, fontsize=12)
 
     # Rotate the tick labels and set their alignment, because they too long (eg.
     # "Seed XXXX" or "Ground Truth").
@@ -300,6 +301,7 @@ def plot_similarity_matrix_nmi(
                 ha="center",
                 va="center",
                 color=text_color,
+                fontsize=10,
             )
 
     fig.tight_layout()
@@ -343,7 +345,8 @@ def plot_metric(fluidc_metrics, graph_name, metric="nmi", output_dir=Path("resul
     # Average NMI for each max_iter across all seeds.
     stats = data.groupby("max_iter", as_index=False)[metric].agg(["mean", "std"])
 
-    ax = stats.plot(x="max_iter", y="mean", marker="o", legend=False)
+    _, ax = plt.subplots(figsize=(10, 7))
+    stats.plot(x="max_iter", y="mean", marker="o", legend=False, ax=ax)
 
     # Show standard deviation around the mean.
     ax.fill_between(
@@ -355,8 +358,8 @@ def plot_metric(fluidc_metrics, graph_name, metric="nmi", output_dir=Path("resul
     )
 
     ax.grid(True, alpha=0.5)
-    ax.set_xlabel("Max iterations")
-    ax.set_ylabel(metric.upper())
+    ax.set_xlabel("Max iterations", fontsize=14)
+    ax.set_ylabel(metric.upper(), fontsize=14)
     ax.set_xticks(stats["max_iter"])
     ax.xaxis.set_major_formatter(plt.ScalarFormatter())
 
@@ -366,11 +369,14 @@ def plot_metric(fluidc_metrics, graph_name, metric="nmi", output_dir=Path("resul
     yaxis_formatter.set_powerlimits((-2, 2))
     ax.yaxis.set_major_formatter(yaxis_formatter)
 
+    # Increase tick label size.
+    ax.tick_params(axis="both", which="major", labelsize=12)
+
     assert isinstance(output_dir, Path)
     output_dir = output_dir / Path("plots")
     output_dir.mkdir(parents=True, exist_ok=True)
     plot_name = output_dir / Path(f"{graph_name}_{metric}.pdf")
-    plt.savefig(plot_name)
+    plt.savefig(plot_name, bbox_inches="tight")  # Do not cut text in figure.
     print(f"Saved {plot_name.as_posix()!r}")
     plt.close()
 
@@ -396,7 +402,8 @@ def time_plot(fluidc_metrics, graph_name, output_dir=Path("results")):
     # Average execution time for each max_iter across all seeds.
     stats = data.groupby("max_iter", as_index=False)["time"].agg(["mean", "std"])
 
-    ax = stats.plot(x="max_iter", y="mean", marker="o", legend=False)
+    _, ax = plt.subplots(figsize=(10, 7))
+    stats.plot(x="max_iter", y="mean", marker="o", legend=False, ax=ax)
     # Show standard deviation around the mean.
     ax.fill_between(
         stats["max_iter"],
@@ -407,16 +414,19 @@ def time_plot(fluidc_metrics, graph_name, output_dir=Path("results")):
     )
 
     ax.grid(True, alpha=0.5)
-    ax.set_xlabel("Max iterations")
-    ax.set_ylabel("Seconds")
+    ax.set_xlabel("Max iterations", fontsize=14)
+    ax.set_ylabel("Seconds", fontsize=14)
     ax.set_xticks(stats["max_iter"])
     ax.xaxis.set_major_formatter(plt.ScalarFormatter())
+
+    # Increase tick label size.
+    ax.tick_params(axis="both", which="major", labelsize=12)
 
     assert isinstance(output_dir, Path)
     output_dir = output_dir / Path("plots")
     output_dir.mkdir(parents=True, exist_ok=True)
     plot_name = output_dir / Path(f"{graph_name}_time.pdf")
-    plt.savefig(plot_name)
+    plt.savefig(plot_name, bbox_inches="tight")  # Do not cut text on figure.
     print(f"Saved {plot_name.as_posix()!r}")
     plt.close()
 
@@ -433,7 +443,7 @@ def time_aggregated_plot(graphs_data, output_dir=Path("results")):
     Returns:
         None
     """
-    fig, ax = plt.subplots()  # pylint: disable=unused-variable
+    fig, ax = plt.subplots(figsize=(12, 8))  # pylint: disable=unused-variable
     for name, metrics in graphs_data.items():
         # See time_plot for comments on the loop instructions.
         data = metrics[["name", "seed", "max_iter", "time"]]
@@ -454,16 +464,19 @@ def time_aggregated_plot(graphs_data, output_dir=Path("results")):
 
     ax.legend()
     ax.grid(True, alpha=0.5)
-    ax.set_xlabel("Max iterations")
-    ax.set_ylabel("Seconds")
+    ax.set_xlabel("Max iterations", fontsize=14)
+    ax.set_ylabel("Seconds", fontsize=14)
     ax.set_xticks(stats["max_iter"])
     ax.xaxis.set_major_formatter(plt.ScalarFormatter())
+
+    # Increase tick label size.
+    ax.tick_params(axis="both", which="major", labelsize=12)
 
     assert isinstance(output_dir, Path)
     output_dir = output_dir / Path("plots")
     output_dir.mkdir(parents=True, exist_ok=True)
     plot_name = output_dir / Path("aggregated_time.pdf")
-    plt.savefig(plot_name)
+    plt.savefig(plot_name, bbox_inches="tight")  # Do not cut text on figure.
     print(f"Saved {plot_name.as_posix()!r}")
     plt.close()
 

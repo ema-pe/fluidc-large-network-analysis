@@ -2,6 +2,7 @@
 the NetworkX library by saving the results to a file on disk.
 
 The module can be imported or executed as a command-line script."""
+
 # pylint: disable=import-error
 
 from pathlib import Path
