@@ -6,6 +6,8 @@ from tqdm import tqdm
 
 import fluidc
 
+output_dir = Path("results")
+
 # (graph_path, ground_truth)
 networks = [
     ("dataset/com-amazon.ungraph.txt.gz", 75149),
@@ -29,7 +31,6 @@ seeds = [
 
 # FluidC max iterations parameters.
 max_iters = [2, 5, 7, 10, 15]
-#max_iters = [5]
 
 
 # Create all possibile experiments with networks, seeds and max_iter arguments.
@@ -43,9 +44,7 @@ all_args = [
 for i in tqdm(range(len(all_args))):
     graph, truth, seed, max_iter = all_args[i]
 
-    results_dir = Path("results_tmp")
-
     print(
         f"Running experiment: graph={graph}, truth={truth}, seed={seed}, max_iter={max_iter}"
     )
-    fluidc.run(graph, seed, truth, max_iter, results_dir=results_dir)
+    fluidc.run(graph, seed, truth, max_iter, results_dir=output_dir)

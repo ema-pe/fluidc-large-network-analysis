@@ -1,4 +1,4 @@
-# pylint: disable=import-error,redefined-outer-name
+# pylint: disable=import-error,redefined-outer-name,too-many-locals
 from pathlib import Path
 import argparse
 import functools
@@ -104,7 +104,9 @@ def calc_metrics(fluidc_comm, ground_truth_comm):
 
         # Remove nodes where either label is -1, to avoid distortion in purity
         # and NMI, since sklearn treats -1 as valid cluster label.
-        filtered = [(t, p) for t, p in zip(ground_labels, result_labels) if t != -1 and p != -1]
+        filtered = [
+            (t, p) for t, p in zip(ground_labels, result_labels) if t != -1 and p != -1
+        ]
         if not filtered:
             raise ValueError("filtered is empty")
         ground_labels, result_labels = zip(*filtered)
@@ -187,14 +189,19 @@ def plot_similarity_matrix_nmi(
 
             comm_j = all_comms[label_j]
 
-            # Gather all vertices present in both clusterings
+            # See calc_metrics() for docs.
             all_vertices = tuple(sorted(set().union(*comm_i, *comm_j)))
 
-            # Convert to labels format for metric calculation
             labels_i = clusters_to_labels(comm_i, all_vertices)
             labels_j = clusters_to_labels(comm_j, all_vertices)
 
-            # Calculate the requested similarity metric
+            filtered = [
+                (t, p) for t, p in zip(labels_i, labels_j) if t != -1 and p != -1
+            ]
+            if not filtered:
+                raise ValueError("filtered is empty")
+            labels_i, labels_j = zip(*filtered)
+
             similarity_matrix[i, j] = normalized_mutual_info_score(labels_i, labels_j)
 
     # Create the heatmap.
@@ -203,8 +210,7 @@ def plot_similarity_matrix_nmi(
     im = ax.imshow(similarity_matrix, cmap="viridis", vmin=0, vmax=1)
 
     # Add colorbar.
-    cbar = ax.figure.colorbar(im, ax=ax)
-    cbar.ax.set_ylabel("NMI", rotation=-90, va="bottom")
+    ax.figure.colorbar(im, ax=ax).set_ylabel("NMI", rotation=-90, va="bottom")
 
     # Show ticks and labels.
     ax.set_xticks(np.arange(matrix_size))

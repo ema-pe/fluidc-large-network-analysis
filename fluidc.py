@@ -1,3 +1,4 @@
+# pylint: disable=import-error
 from pathlib import Path
 import time
 import gzip

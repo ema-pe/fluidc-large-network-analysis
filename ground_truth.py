@@ -1,7 +1,7 @@
 """Module for loading unique communities from gzipped files.
 
 Usage as a script:
-    python ground_truth.py --communities dataset/com-lj.all.cmty.txt.gz dataset/com-youtube.all.cmty.txt.gz
+    python ground_truth.py --communities dataset/graphXX.txt.gz ...
 """
 
 from pathlib import Path
@@ -38,14 +38,14 @@ def load(graph_name):
     try:
         ground_truth_path = Path(f"dataset/{graph_name}.all.cmty.txt.gz")
         ground_truth_comm = get_unique_communities(ground_truth_path)
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         ground_truth_path = Path(f"dataset/{graph_name}.all.dedup.cmty.txt.gz")
         ground_truth_comm = get_unique_communities(ground_truth_path)
 
     return ground_truth_comm
 
 
-if __name__ == "__main__":
+def _main():
     parser = argparse.ArgumentParser(
         description="Print the number of communities for each given community file"
     )
@@ -57,3 +57,7 @@ if __name__ == "__main__":
     for community_path in args.communities:
         communities = get_unique_communities(community_path)
         print(f"{community_path.as_posix()!r}: {len(communities)}")
+
+
+if __name__ == "__main__":
+    _main()
