@@ -3,6 +3,7 @@ import time
 import gzip
 import argparse
 
+import numpy as np
 import networkx as nx
 
 
@@ -35,9 +36,11 @@ def run(graph_path, seed, ground_truth, max_iter, results_dir=Path("results")):
     ), "FluidC k argument must be a positive number (at least one)"
     assert max_iter > 0, "Max iterations must be a positive number (at least one)"
 
+    rng = np.random.default_rng(seed)
+
     start = time.time()
     communities = nx.community.asyn_fluidc(
-        graph, ground_truth, max_iter=max_iter, seed=seed
+        graph, ground_truth, max_iter=max_iter, seed=rng
     )
     end = time.time()
 
