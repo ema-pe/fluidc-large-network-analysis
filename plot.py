@@ -191,7 +191,7 @@ def calc_metrics(fluidc_comm, ground_truth_comm):
         matrix = contingency_matrix(ground_labels, result_labels)
         # Use np.amax to get the largest value in each column (max for each
         # predicted cluster).
-        purity = np.sum(np.amax(matrix, axis=1)) / np.sum(matrix)
+        purity = np.sum(np.amax(matrix, axis=0)) / np.sum(matrix)
 
         data.append((result, nmi, ari, purity))
 
@@ -239,37 +239,66 @@ def plot_similarity_matrix_nmi(
     # Add ground truth to the comparison.
     all_comms["Ground Truth"] = ground_truth_comm
 
-    # Create a similarity matrix.
-    labels = list(all_comms.keys())
+    labels = sorted(list(all_comms.keys()))
     matrix_size = len(labels)
-    similarity_matrix = np.zeros((matrix_size, matrix_size))
 
-    # Calculate similarity metrics for each pair
-    for i, label_i in enumerate(tqdm(labels, desc="Calculating NMI similarity matrix")):
-        comm_i = all_comms[label_i]
+    similarity_matrix_cache_file = Path(results_dir) / Path(
+        f"{graph_name}_similarity_matrix_nmi_{highest_max_iter}.csv"
+    )
 
-        for j, label_j in enumerate(labels):
-            if i == j:
-                # Same communities, perfect similarity
-                similarity_matrix[i, j] = 1.0
-                continue
+    # Load the similarity matrix from disk if possibile.
+    similarity_matrix = None
+    if use_cache:
+        try:
+            similarity_matrix = pd.read_csv(similarity_matrix_cache_file, index_col=0)
+        except FileNotFoundError:
+            pass  # Cache file doesn't exist, so we'll calculate the matrix.
+        except Exception:  # pylint: disable=broad-exception-caught
+            print(f"Failed to read {similarity_matrix_cache_file.as_posix()!r}")
 
-            comm_j = all_comms[label_j]
+    if similarity_matrix is None:
+        similarity_matrix = np.zeros((matrix_size, matrix_size))
 
-            # See calc_metrics() for docs.
-            all_vertices = tuple(sorted(set().union(*comm_i, *comm_j)))
+        # Calculate similarity metrics for each pair
+        for i, label_i in enumerate(
+            tqdm(labels, desc="Calculating NMI similarity matrix")
+        ):
+            comm_i = all_comms[label_i]
 
-            labels_i = clusters_to_labels(comm_i, all_vertices)
-            labels_j = clusters_to_labels(comm_j, all_vertices)
+            for j, label_j in enumerate(labels):
+                if i > j:
+                    # Matrix is symmetric, we can copy the value.
+                    similarity_matrix[i, j] = similarity_matrix[j, i]
+                    continue
 
-            filtered = [
-                (t, p) for t, p in zip(labels_i, labels_j) if t != -1 and p != -1
-            ]
-            if not filtered:
-                raise ValueError("filtered is empty")
-            labels_i, labels_j = zip(*filtered)
+                if i == j:
+                    # Same communities, perfect similarity
+                    similarity_matrix[i, j] = 1.0
+                    continue
 
-            similarity_matrix[i, j] = normalized_mutual_info_score(labels_i, labels_j)
+                comm_j = all_comms[label_j]
+
+                # See calc_metrics() for docs.
+                all_vertices = tuple(sorted(set().union(*comm_i, *comm_j)))
+
+                labels_i = clusters_to_labels(comm_i, all_vertices)
+                labels_j = clusters_to_labels(comm_j, all_vertices)
+
+                filtered = [
+                    (t, p) for t, p in zip(labels_i, labels_j) if t != -1 and p != -1
+                ]
+                if not filtered:
+                    raise ValueError("filtered is empty")
+                labels_i, labels_j = zip(*filtered)
+
+                similarity_matrix[i, j] = normalized_mutual_info_score(
+                    labels_i, labels_j
+                )
+
+        # Save the matrix.
+        similarity_df = pd.DataFrame(similarity_matrix, index=labels, columns=labels)
+        similarity_df.to_csv(similarity_matrix_cache_file)
+        print(f"Saved {similarity_matrix_cache_file.as_posix()!r}")
 
     # Create the heatmap.
     fig, ax = plt.subplots(figsize=(10, 8))
