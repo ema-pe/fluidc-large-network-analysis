@@ -2,6 +2,9 @@
 and maximum iteration limits. It saves the results to the "Results" directory on
 disk. The module can only be executed as a script."""
 
+# Copyright (c) 2025 Emanuele Petriglia <inbox@emanuelepetriglia.com>
+# All rights reserved. This file is licensed under the MIT license.
+
 # pylint: disable=import-error
 
 from pathlib import Path

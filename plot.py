@@ -15,6 +15,9 @@ Example usage:
     python plot.py --results-dir results --graph-name com-amazon ...
 """
 
+# Copyright (c) 2025 Emanuele Petriglia <inbox@emanuelepetriglia.com>
+# All rights reserved. This file is licensed under the MIT license.
+
 # pylint: disable=import-error,redefined-outer-name,too-many-locals
 
 from pathlib import Path

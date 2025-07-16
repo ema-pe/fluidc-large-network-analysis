@@ -5,6 +5,9 @@ The module can be imported or executed as a command-line script."""
 
 # pylint: disable=import-error
 
+# Copyright (c) 2025 Emanuele Petriglia <inbox@emanuelepetriglia.com>
+# All rights reserved. This file is licensed under the MIT license.
+
 from pathlib import Path
 import time
 import gzip

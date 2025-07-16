@@ -4,6 +4,9 @@ Usage as a script:
     python ground_truth.py --communities dataset/graphXX.txt.gz ...
 """
 
+# Copyright (c) 2025 Emanuele Petriglia <inbox@emanuelepetriglia.com>
+# All rights reserved. This file is licensed under the MIT license.
+
 from pathlib import Path
 import gzip
 import argparse
