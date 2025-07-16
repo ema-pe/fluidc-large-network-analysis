@@ -2,7 +2,7 @@
 
 This project provides an evaluation of the FluidC algorithm for community detection in large-scale and real-data complex networks. It includes scripts to run experiments, analyze results, and generate plots.
 
-This was developed as part of a doctoral course exam called "Graph Theory and Algorithms". A brief report on the experiments and their results is available here: [Link to Report (coming soon)]. The project will not be updated after submission, and the code is provided as-is.
+This was developed as part of a computer science doctoral course exam called "Graph Theory and Algorithms" at the University of Milano-Bicocca for the 2024-2025 academic year. A brief report on the experiments and their results is available. You can also get the raw results files (plots and CSV files). The project will not be updated after submission, and the code is provided as-is. 
 
 ## How to run
 
