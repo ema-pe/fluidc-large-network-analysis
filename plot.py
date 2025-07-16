@@ -272,7 +272,7 @@ def plot_similarity_matrix_nmi(
             similarity_matrix[i, j] = normalized_mutual_info_score(labels_i, labels_j)
 
     # Create the heatmap.
-    fig, ax = plt.subplots(figsize=(12, 10))
+    fig, ax = plt.subplots(figsize=(10, 8))
     # Show the matrix as heatmap, with a specific color map and min/max values.
     im = ax.imshow(similarity_matrix, cmap="viridis", vmin=0, vmax=1)
 
@@ -345,7 +345,7 @@ def plot_metric(fluidc_metrics, graph_name, metric="nmi", output_dir=Path("resul
     # Average NMI for each max_iter across all seeds.
     stats = data.groupby("max_iter", as_index=False)[metric].agg(["mean", "std"])
 
-    _, ax = plt.subplots(figsize=(10, 7))
+    _, ax = plt.subplots(figsize=(8, 6))
     stats.plot(x="max_iter", y="mean", marker="o", legend=False, ax=ax)
 
     # Show standard deviation around the mean.
@@ -402,7 +402,7 @@ def time_plot(fluidc_metrics, graph_name, output_dir=Path("results")):
     # Average execution time for each max_iter across all seeds.
     stats = data.groupby("max_iter", as_index=False)["time"].agg(["mean", "std"])
 
-    _, ax = plt.subplots(figsize=(10, 7))
+    _, ax = plt.subplots(figsize=(8, 6))
     stats.plot(x="max_iter", y="mean", marker="o", legend=False, ax=ax)
     # Show standard deviation around the mean.
     ax.fill_between(
@@ -443,7 +443,7 @@ def time_aggregated_plot(graphs_data, output_dir=Path("results")):
     Returns:
         None
     """
-    fig, ax = plt.subplots(figsize=(12, 8))  # pylint: disable=unused-variable
+    fig, ax = plt.subplots(figsize=(10, 6))  # pylint: disable=unused-variable
     for name, metrics in graphs_data.items():
         # See time_plot for comments on the loop instructions.
         data = metrics[["name", "seed", "max_iter", "time"]]
