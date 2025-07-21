@@ -46,4 +46,4 @@ The git repository is available online on both [GitLab](https://gitlab.com/ema-p
 
 ## License
 
-Copyright (c) 2025 Emanuele Petriglia <inbox@emanuelepetriglia.com>. This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+Copyright (c) 2025 Emanuele Petriglia. This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
