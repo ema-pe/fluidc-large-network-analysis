@@ -2,7 +2,7 @@
 
 This small project evaluates the [FluidC algorithm](doi.org/10.1007/978-3-319-72150-7_19) for community detection in large-scale and real-data complex networks. It includes Python scripts to run experiments, analyze results, and generate plots.
 
-This was developed in July 2025 as part of a computer science doctoral course exam called "Graph Theory and Algorithms" at the University of Milano-Bicocca for the 2024-2025 academic year. A brief report on the experiments and their results is available for download. You can also get the raw results files (plots and CSV files). The project will not be updated after submission, and the code is provided as-is.
+This was developed in July 2025 as part of a computer science doctoral course exam called "Graph Theory and Algorithms" at the University of Milano-Bicocca for the 2024-2025 academic year. A brief report on the experiments and their results is [available for download](https://gitlab.com/-/project/71435573/uploads/d90d637ec09973e8405c17829c9963b9/fluidc.pdf). You can also get the [raw results files](http://gitlab.com/-/project/71435573/uploads/b0a51b713801dea0bf8ecb01a06d908e/csv_plots.zip) (plots and CSV files). The project will not be updated after submission, and the code is provided as-is.
 
 The git repository is available online on both [GitLab](https://gitlab.com/ema-pe/fluidc-large-network-analysis) and [GitHub](https://github.com/ema-pe/fluidc-large-network-analysis). However, GitHub is only a mirror of GitLab.
 
